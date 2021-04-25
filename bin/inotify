@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+WORK_DIR=$1
+if [ ! -n "${WORK_DIR}" ] ;then
+    WORK_DIR="."
+fi
+
+echo "Starting notify..."
+
+echo "Starting inotifywait..."
+LOCKING=0
+
+inotifywait --event modify --event create --event move --event delete -mrq   ${WORK_DIR}  | while read file
+
+do
+    if [[ ${file} =~ .vue$ ]] ;then
+        php artisan extension:init
+    fi
+    if [[ ! ${file} =~ .php$ ]] ;then
+        continue
+    fi
+    if [ ${LOCKING} -eq 1 ] ;then
+        echo "Reloading, skipped."
+        continue
+    fi
+    echo "File ${file} has been modified."
+    LOCKING=1
+    supervisorctl restart all
+    LOCKING=0
+done
+exit 0
+
+# how to use: ./bin/inotify ./app/

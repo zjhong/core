@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Websocket demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+
+    <script type="text/javascript">
+        var host = 'thingspanel.local'; //local
+        var host = 'thingsdev.jiyikeji.cn'; //dev
+
+        axios.post('https://' + host + '/api/auth/login', {
+            email: 'admin',
+            password: 'password'
+        }).then(function (response) {
+            console.log(response);
+
+            var wsServer;
+            var websocket;
+
+            new Vue({
+                el: '#app',
+                data: {
+                    message: {
+                        "aid": ['9016fee6-411f-48a7-b1b9-edaa97bf905e'],
+                        "wid": '9016fe07-996f-4767-b20b-2d808ecb05fe',
+                        "config": {
+                            "startTs": new Date().getTime() - 3600 * 1000,
+                            "operator": "SUM",
+                            "interval": 1000 // 1 second
+                        }
+                    },
+                    content: ""
+                },
+                methods: {
+                    connect: function () {
+                        this.createConnect();
+                    },
+                    createConnect: function () {
+                        wsServer = 'wss://' + host + '/ws?token=' + response.data.data.access_token;
+                        var _this = this;
+
+                        websocket = new WebSocket(wsServer);
+                        websocket.onopen = function (evt) {
+                            console.log("Connected to WebSocket server.");
+
+                            websocket.send(JSON.stringify(_this.message));
+                        };
+
+                        websocket.onclose = function (evt) {
+                            console.log("Disconnected");
+                            //重连接
+                            //_this.createConnect();
+                        };
+
+                        websocket.onmessage = function (evt) {
+                            console.log('Retrieved data from server: ' + evt.data);
+                            _this.content += "<br/>" + evt.data;
+                        };
+
+                        websocket.onerror = function (evt, e) {
+                            console.log('Error occured: ' + evt.data);
+                        };
+
+                        setTimeout(function () {
+                            websocket.close();
+                        }, 1000 * 600);
+                    },
+                    close: function () {
+                        websocket.close();
+                    },
+                    send: function () {
+                        websocket.send(JSON.stringify(this.message));
+                    }
+                }
+            });
+
+        }).catch(function (error) {
+            console.log(error);
+        });
+    </script>
+</head>
+<body>
+<div id="app">
+    <textarea style="width: 100%;" rows="10" v-text="message"></textarea>
+    <button v-on:click="connect()">connect</button>
+    <button v-on:click="close()">close</button>
+    <button v-on:click="send()">send</button>
+
+    <div v-html="content"></div>
+</div>
+</body>
+</html>
